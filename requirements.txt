@@ -1,0 +1,7 @@
+Django==3.2.13
+pymysql==1.0.2
+django-simpleui==2022.4.9
+apscheduler==3.9.1
+django_redis==5.2.0
+uwsgi==2.0.20
+# -i https://pypi.tuna.tsinghua.edu.cn/simple/

@@ -1,0 +1,10 @@
+<uwsgi>    
+   <socket>127.0.0.1:8997</socket> <!-- 内部端口，自定义 --> 
+   <chdir>/Users/liumy/PycharmProjects/autojob/</chdir> <!-- 项目路径 -->
+   <module>autojob.wsgi</module>  <!-- autojob为wsgi.py所在目录名-->
+   <processes>4</processes> <!-- 进程数 -->
+   <daemonize>uwsgi.log</daemonize> <!-- 日志文件 -->
+   <enable-threads>True</enable-threads>
+   <preload>True</preload>
+   <lazy-apps>True</lazy-apps>
+</uwsgi>
