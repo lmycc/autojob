@@ -1,8 +1,0 @@
-[2022-05-04 10:34:00,717][MainThread:8674858496][task_id:django.utils.autoreload][autoreload.py:637][INFO][Watching for file changes with StatReloader]
-[2022-05-04 10:34:30,325][MainThread:8674858496][task_id:django.utils.autoreload][autoreload.py:251][INFO][/Users/liumy/PycharmProjects/autojob/autojob/urls.py changed, reloading.]
-[2022-05-04 10:34:30,680][MainThread:8674416128][task_id:django.utils.autoreload][autoreload.py:637][INFO][Watching for file changes with StatReloader]
-[2022-05-04 10:34:30,774][django-main-thread:13074300928][task_id:autojob.wsgi][wsgi.py:28][INFO][程序启动，恢复未完成的定时任务 : 0]
-[2022-05-04 10:34:30,776][django-main-thread:13074300928][task_id:apscheduler.scheduler][base.py:171][INFO][Scheduler started]
-[2022-05-04 10:34:32,066][MainThread:8594667008][task_id:django.utils.autoreload][autoreload.py:637][INFO][Watching for file changes with StatReloader]
-[2022-05-04 10:34:32,149][django-main-thread:12913291264][task_id:autojob.wsgi][wsgi.py:28][INFO][程序启动，恢复未完成的定时任务 : 0]
-[2022-05-04 10:34:32,149][django-main-thread:12913291264][task_id:apscheduler.scheduler][base.py:171][INFO][Scheduler started]
