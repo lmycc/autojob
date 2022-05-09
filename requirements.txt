@@ -5,3 +5,4 @@ apscheduler==3.9.1
 django_redis==5.2.0
 uwsgi==2.0.20
 # -i https://pypi.tuna.tsinghua.edu.cn/simple/
+# 开源地址 https://github.com/lmycc/autojob.git
