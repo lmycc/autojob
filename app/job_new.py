@@ -3,7 +3,8 @@ import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED
-from app.test_job import test
+
+from app.models import JobList
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +22,21 @@ class JobAction:
 
     @staticmethod
     def start_date_job(trigger, job_rate, id):
+        exec(JobList.objects.get(id=id).trigger.func_path)
         trigger_id = trigger + '-' + id
-        scheduler.add_job(eval(trigger), 'date', run_date=job_rate, id=trigger_id, args=[trigger_id, id, 'date'],
-                          coalesce=False)
+        scheduler.add_job(eval(trigger), 'date', run_date=job_rate, id=trigger_id, args=[trigger_id, id, 'date'])
         logger.info("%s start successfully" % trigger)
         logger.info('任务池：' + str(scheduler.get_jobs))
 
     @staticmethod
     def start_cron_job(trigger, job_rate, id):
+        exec(JobList.objects.get(id=id).trigger.func_path)
         rate = job_rate.split()
         trigger_id = trigger + '-' + id
         # 秒 分 时 日 月 星期 年
         scheduler.add_job(eval(trigger), 'cron', second=rate[0], minute=rate[1], hour=rate[2], day=rate[3],
                           month=rate[4], day_of_week=rate[5], year=rate[6], id=trigger_id,
-                          args=[trigger_id, id, 'cron'], coalesce=False)
+                          args=[trigger_id, id, 'cron'])
         logger.info("%s start successfully" % trigger)
         logger.info('任务池：' + str(scheduler.get_jobs))
 

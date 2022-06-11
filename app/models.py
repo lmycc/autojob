@@ -1,10 +1,23 @@
 from django.db import models
 
 
-class job_list(models.Model):
-    decpet = models.CharField('描述', max_length=255)
+class JobListTrigger(models.Model):
+    trigger_name = models.CharField('触发器名称', max_length=25)
+    trigger_func = models.CharField('触发器', max_length=25)
+    func_desc = '例：from app.test_job import test'
+    func_path = models.CharField('触发器路径', help_text=func_desc, max_length=255)
+    description = models.CharField('描述', max_length=50)
+
+    def __str__(self):
+        return self.trigger_name
+
+    class Meta:
+        verbose_name_plural = '定时任务触发器'
+
+
+class JobList(models.Model):
     job_name = models.CharField('任务名称', max_length=25)
-    trigger_name = models.CharField('触发器', max_length=25)
+    trigger = models.ForeignKey(JobListTrigger, on_delete=models.SET_NULL, null=True)
     type_choices = (('date', 'date'), ('cron', 'cron'))
     type_content = '''调度类型 对应 参数（执行频率）  例：<br/>
                     1、date：2019年8月30日 凌晨一点 执行任务<br/>参数值：2019-8-30 01:00:00 <br/>
@@ -16,7 +29,7 @@ class job_list(models.Model):
     time = models.IntegerField('执行次数', default=0)
 
     def __str__(self):
-        return self.decpet
+        return self.job_name
 
     class Meta:
         verbose_name_plural = '定时任务'
