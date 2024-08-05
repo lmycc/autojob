@@ -36,7 +36,7 @@ class JobListAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            readonly_fields = ('trigger_id', 'job_state', 'trigger_name',)
+            readonly_fields = ('trigger_id', 'job_state', 'update_time',)
         else:
             readonly_fields = ('job_state',)
         return readonly_fields
