@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from app.job_new import JobAction
 
-from .models import JobList, JobListTrigger
+from .models import JobList, JobTrigger
 import logging
 from django.contrib import messages
 
@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 # Register your models here.
-@admin.register(JobListTrigger)
-class JobListTriggerAdmin(admin.ModelAdmin):
+@admin.register(JobTrigger)
+class JobTriggerAdmin(admin.ModelAdmin):
     list_display = ('id', 'trigger_name', 'trigger_func', 'func_path', 'description')
     list_display_links = ('id', 'trigger_name')
     list_per_page = 20

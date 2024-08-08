@@ -1,4 +1,5 @@
 import logging
+from functools import wraps
 
 from django.core.cache import cache
 from django.utils import timezone
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def job_before(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         from app.job_new import JobAction
         job_state = JobList.objects.filter(id=int(args[1])).values('job_state')[0]['job_state']
@@ -26,6 +28,7 @@ def job_before(func):
         else:
             JobAction.stop_job(args[0])
 
+    wrapper._is_decorated = True
     return wrapper
 
 
