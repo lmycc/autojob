@@ -34,7 +34,7 @@ INSTALLED_APPS = [
 
 #### Two ways to enter custom scheduled jobs
 
-- **终端命令方式**
+- **Terminal command**
 
 ```
 ## After writing custom scheduled jobs in the Django project, the following commands can be executed on the terminal：
@@ -44,7 +44,7 @@ python manage.py scan_jobs
 ###检测到新增定时任务：myapp.abc.job_test
 ```
 
-- **代码调用方式**
+- **Code calls**
 
 ```
 ## This method involves adding a reference to the command in the 'wsgi.py' file to input custom timed task triggers
