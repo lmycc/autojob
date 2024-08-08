@@ -1,3 +1,6 @@
+# README.md
+- en [English](README.md)
+- zh_CN [简体中文](readme/README.zh_CN.md)
 # AutoJob
 
 #### AutoJob 是整合了APScheduler和Django的一个定时任务app，只需安装依赖，通过一定配置即可完成定时任务的开发，可通过页面管理定时任务的编辑和状态变更。
