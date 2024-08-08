@@ -1,3 +1,7 @@
+# README.md
+- [English](README.md)
+- [简体中文](README.zh_CN.md)
+
 # AutoJob
 
 #### AutoJob 是整合了APScheduler和Django的一个定时任务app，只需安装依赖，通过一定配置即可完成定时任务的开发，可通过页面管理定时任务的编辑和状态变更
@@ -5,12 +9,12 @@
 #### 暂只支持`corn`和`date`两种类型，本地需安装redis
 #### 该定时任务还适配了simple-ui前端框架
 
-### 安装方式
+## 安装方式
 ```
-  pip install autojob
+pip install autojob
 ```
-### 使用方式
------------
+## 使用方式
+
 ### 1. 添加 "autojob" 到 `settings.py`的 INSTALLED_APPS 中：
 ```
 INSTALLED_APPS = [
@@ -18,10 +22,11 @@ INSTALLED_APPS = [
     'autojob.apps.AutoJob',
 ]
 ```
+
 ### 2. 执行 `python manage.py migrate autojob` 迁移数据表，下面是添加触发器的方式
 #### 两种录入自定义定时任务的方式
 - **终端命令方式**
-```shell
+```
 ## django项目中编写了自定义的定时任务后，可以在终端执行以下命令：
 python manage.py scan_jobs
 
@@ -29,9 +34,9 @@ python manage.py scan_jobs
 ###检测到新增定时任务：myapp.abc.job_test
 ```
 - **代码调用方式**
-```python
+```
 ## 这种方式是在`wsgi.py`文件中增加对command的引用来录入自定义定时任务触发器
-from autojob.management.commands.scan_jobs import Command
+from app.management.commands.scan_jobs import Command
 scan_jobs = Command()
 scan_jobs.handle()
  
@@ -44,6 +49,7 @@ scan_jobs.handle()
 from autojob import job_tool
 job_tool.job_control()
 ```
+
 ### 4. 在 `settings.py`添加redis配置
 ```
 CACHES = {
@@ -59,23 +65,24 @@ CACHES = {
     }
 }
 ```
+
 ### 5. 一个测试任务的demo： `job_test.py`
-```python
+
+```
 # coding=utf-8
 import datetime
 import logging
 
-from autojob.job_tool import job_before
+from app.job_tool import job_before
 
 logger = logging.getLogger(__name__)
 
 
 @job_before
 def job_test(*args):
-    #当应用程序启动时，录入任务触发器时会读取下面这行文档当做触发器的描述，如果没有则默认描述是函数的路径
+    # 当应用程序启动时，录入任务触发器时会读取下面这行文档当做触发器的描述，如果没有则默认描述是函数的路径
     """一个测试的定时任务"""
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     logger.info(now + '__This is a timed task for testing:' + args[0])
-
 ```
 

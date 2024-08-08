@@ -1,49 +1,104 @@
 # README.md
+
 - [English](README.md)
 - [简体中文](README.zh_CN.md)
+
 # AutoJob
 
-#### AutoJob 是整合了APScheduler和Django的一个定时任务app，只需安装依赖，通过一定配置即可完成定时任务的开发，可通过页面管理定时任务的编辑和状态变更。
-#### 暂只支持`corn`和`date`两种类型，本地需安装redis。
-#### 该定时任务还适配了simple-ui前端框架
+#### AutoJob is a timed task app that integrates APScheduler and Django, which only needs to install dependencies, complete the development of scheduled tasks through certain configurations, and manage the editing and status changes of scheduled tasks through the page
 
-### 安装方式
-```
-  pip install autojob
-```
-Quick start
------------
-#### 1. Add "autojob" to your INSTALLED_APPS setting like this
-```
-    INSTALLED_APPS = [
-        ...
-        'autojob.apps.AutoJob',
-    ]
-```
-#### 2. Run `python manage.py migrate autojob` to create the autojob models
+#### This app solves the problem of scheduling task startup conflicts caused by starting multiple processes when deploying applications in Django+uwsgi
 
+#### Currently only supports two types: 'corn' and 'date', Redis needs to be installed locally
 
-#### 3. Add a reference to `wsgi.py`
+#### This scheduled task is also compatible with the Simple UI front-end framework
+
+## Installation
+
 ```
-    from autojob import job_tool
-    job_tool.job_control()
+pip install autojob
 ```
-#### 4. Add cache config to settings.py
+
+## Usage
+
+### 1. Add "autojob" to your INSTALLED_APPS setting like this
+
 ```
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": "redis://127.0.0.1:6379/0",
-            "OPTIONS": {
-                "PICK_VERSION": -1,
-                "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "PASSWORD": ""
-            }
+INSTALLED_APPS = [
+    ...
+    'autojob.apps.AutoJob',
+]
+```
+
+### 2. Run `python manage.py migrate autojob` to create the autojob models
+
+#### Two ways to enter custom scheduled jobs
+
+- **终端命令方式**
+
+```
+## After writing custom scheduled jobs in the Django project, the following commands can be executed on the terminal：
+python manage.py scan_jobs
+
+##Return the following message, indicating that the timed task trigger has been successfully added to the data table (repeated execution will not result in duplicate addition)：
+###检测到新增定时任务：myapp.abc.job_test
+```
+
+- **代码调用方式**
+
+```
+## This method involves adding a reference to the command in the 'wsgi.py' file to input custom timed task triggers
+from app.management.commands.scan_jobs import Command
+
+scan_jobs = Command()
+scan_jobs.handle()
+
+##Return the following message, indicating that the timed task trigger has been successfully added to the data table (repeated execution will not result in duplicate addition)：
+###检测到新增定时任务：myapp.abc.job_test
+```
+
+### 3. Add a reference to `wsgi.py`
+
+```
+from autojob import job_tool
+job_tool.job_control()
+```
+
+### 4. Add cache config to settings.py
+
+```
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/0",
+        "OPTIONS": {
+            "PICK_VERSION": -1,
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PASSWORD": ""
         }
     }
+}
 ```
-#### 5. Start the development server and visit http://127.0.0.1:8000/admin/
-   to create a poll (you'll need the Admin app enabled).
 
-#### 6. Visit http://127.0.0.1:8000/admin/autojob/ to participate in the poll.
+### 5. job demo `job_test.py`
+
+```
+# coding=utf-8
+import datetime
+import logging
+
+from app.job_tool import job_before
+
+logger = logging.getLogger(__name__)
+
+
+@job_before
+def job_test(*args):
+    # When the application is started, the job scanning document automatically 
+    # reads the description of the job. If the description is not written, it is the path of the job by default
+    """This is a timed task for testing"""
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    logger.info(now + '__This is a timed task for testing:' + args[0])
+
+```
