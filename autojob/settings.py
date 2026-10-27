@@ -97,6 +97,11 @@ CACHES = {
         }
     }
 }
+
+# 定时任务指令广播（Pub/Sub），复用上面的 Redis 连接地址
+JOB_CMD_REDIS_URL = CACHES['default']['LOCATION']
+JOB_CMD_CHANNEL = 'autojob:job_cmd'
+
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 

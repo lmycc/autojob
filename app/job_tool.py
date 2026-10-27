@@ -15,34 +15,22 @@ def job_before(func):
         from app.job_new import JobAction
         if args[2] == 'now':
             return func(*args, **kwargs)
-        job_state = JobList.objects.filter(id=int(args[1])).values('job_state')[0]['job_state']
-        if job_state == 1:
-            job_value = cache.get('modify_' + args[0])
-            if job_value:
-                JobAction.modify_job(args[0], job_value)
-                cache.delete('modify_' + args[0])
-            if get_lock(args[0]):
-                if args[2] == 'date' or (job_value and job_value[0] == 'date'):
-                    JobList.objects.filter(id=int(args[1])).update(job_state=0, update_time=timezone.now())
-                func(*args, **kwargs)
-            else:
-                JobAction.stop_job(args[0])
-        else:
+        job = JobList.objects.filter(id=int(args[1])).values('job_state', 'action_type')[0]
+        if job['job_state'] != 1:
+            # 已在 Admin 中被停止，把本进程调度器里的任务移除
             JobAction.stop_job(args[0])
+            return
+        if not get_lock(args[0]):
+            # 其他 worker 正在执行，本进程不再重复执行
+            JobAction.stop_job(args[0])
+            return
+        # 一次性任务执行完自动置为停止，避免重复触发
+        if job['action_type'] == 'date':
+            JobList.objects.filter(id=int(args[1])).update(job_state=0, update_time=timezone.now())
+        func(*args, **kwargs)
 
     wrapper._is_decorated = True
     return wrapper
-
-
-# 任务状态检测
-def monitor_job_status():
-    from app.job_new import JobAction
-    job_stop = cache.iter_keys('stop_*')
-    for i in job_stop:
-        JobAction.stop_job(cache.get(i))
-    job_modify = cache.iter_keys('modify_*')
-    for i in job_modify:
-        JobAction.modify_job(i.replace('modify_', ''), cache.get(i))
 
 
 def get_lock(lock_name):
@@ -63,6 +51,9 @@ def job_control():
         job_list_ = JobList.objects.filter(job_state=1)
         logger.info('程序启动，恢复未完成的定时任务 : ' + str(job_list_.__len__()))
         job_new.start_scheduler()
+        # 每个 worker 进程内各起一个指令监听线程，实时接收 Admin 的停止/修改指令
+        from app.cmd_listener import start_listener
+        start_listener()
         for job_ in job_list_:
             if hasattr(JobAction, 'start_%s_job' % job_.action_type):
                 func = getattr(JobAction(), 'start_%s_job' % job_.action_type)
