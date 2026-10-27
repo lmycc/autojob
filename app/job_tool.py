@@ -13,6 +13,8 @@ def job_before(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         from app.job_new import JobAction
+        if args[2] == 'now':
+            return func(*args, **kwargs)
         job_state = JobList.objects.filter(id=int(args[1])).values('job_state')[0]['job_state']
         if job_state == 1:
             job_value = cache.get('modify_' + args[0])

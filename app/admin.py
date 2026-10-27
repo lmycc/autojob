@@ -32,7 +32,7 @@ class JobListAdmin(admin.ModelAdmin):
     list_per_page = 20
     list_max_show_all = 7
     ordering = ('-job_state', 'id',)
-    actions = ['start_job', 'stop_job']
+    actions = ['start_job', 'stop_job', 'action_job']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -133,3 +133,33 @@ class JobListAdmin(admin.ModelAdmin):
     stop_job.short_description = '停止任务'
     stop_job.icon = 'el-icon-video-pause'
     stop_job.type = 'danger'
+
+    def action_job(self, request, queryset):
+        global job_name
+        job_num = len(queryset.values('id'))
+        if job_num > 1:
+            messages.error(request, "最多只能选择一个任务立即执行")
+        try:
+            id_ = queryset.values('id')[0]
+            name = queryset.values('job_name')[0]
+            job_name = name.get('job_name')
+            job_id = id_.get('id')
+            trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
+            if hasattr(JobAction(), 'run_job'):
+                func = getattr(JobAction(), 'run_job')
+                func(trigger_name, str(job_id))
+            else:
+                messages.error(request, '【启动错误】 ' + job_name + ' 任务不存在!')
+            messages.success(request, '%s 任务启动成功' % job_name)
+        except ConflictingIdError as e:
+            logger.error(e)
+            messages.error(request, job_name + ' 任务启动发生冲突！')
+        except Exception as e:
+            logger.error(e)
+            messages.error(request, job_name + ' 任务启动异常！<br/>请检查调度类型或执行频率')
+        return messages
+
+    action_job.short_description = '立即执行'
+    action_job.icon = 'el-icon-video-play'
+    action_job.type = 'warning'
+    action_job.confirm = "确认立即执行？"

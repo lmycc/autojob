@@ -1,6 +1,7 @@
 # coding=utf-8
 import logging
 import os
+from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED
@@ -42,6 +43,13 @@ class JobAction:
         scheduler.add_job(eval(trigger), 'cron', second=rate[0], minute=rate[1], hour=rate[2], day=rate[3],
                           month=rate[4], day_of_week=rate[5], year=rate[6], id=trigger_id,
                           args=[trigger_id, id, 'cron'], replace_existing=True, coalesce=True)
+
+    @staticmethod
+    def run_job(trigger, id):
+        exec(JobList.objects.get(id=id).trigger.func_path)
+        trigger_id = trigger + '-' + id
+        scheduler.add_job(eval(trigger), 'date', run_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                          id=trigger_id, args=[trigger_id, id, 'now'])
 
     # 停止任务
     @staticmethod
