@@ -6,10 +6,10 @@ from django.utils import timezone
 
 def insert_initial_data(apps, schema_editor):
     # 添加初始数据
-    JobTrigger = apps.get_model('autojob', 'JobTrigger')
+    JobTrigger = apps.get_model('app', 'JobTrigger')
     JobTrigger.objects.create(trigger_name='job-test', trigger_func='job_test',
-                              func_path='from autojob.job_test import job_test', description='job-test')
-    JobList = apps.get_model('autojob', 'JobList')
+                              func_path='from app.test_job import test', description='job-test')
+    JobList = apps.get_model('app', 'JobList')
     JobList.objects.create(job_name='job-test-cron', action_type='cron', job_state=0, job_rate='*/10 * * * * * *',
                            time=0, update_time=timezone.now(), trigger_id=1)
     JobList.objects.create(job_name='job-test-date', action_type='date', job_state=0, job_rate='0 0 2 * * * *',
@@ -18,7 +18,7 @@ def insert_initial_data(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('autojob', '0001_initial'),
+        ('app', '0001_initial'),
     ]
 
     operations = [

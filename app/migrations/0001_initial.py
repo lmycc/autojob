@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('job_rate', models.CharField(help_text='Parameter corresponding to scheduling type (execution frequency) ：<br/>\n        1、date：Execute task at 1am on August 30, 2019<br/>value：2019-8-30 01:00:00 <br/>\n        2、cron：Execute tasks at 2:00 am every day(second minute hour day month week year (The parameters must \n        be in this order))<br/>value：0 0 2 * * * *', max_length=50, verbose_name='frequency')),
                 ('time', models.IntegerField(default=0, verbose_name='number of times')),
                 ('update_time', models.DateTimeField(auto_now_add=True, help_text='The task status change before the time is updated<br/>\n                    start job: The current time must be greater than one minute from the last time it was changed<br/>\n                    stop job: No need to wait to restart', verbose_name='update time')),
-                ('trigger', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='autojob.jobtrigger')),
+                ('trigger', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='app.jobtrigger')),
             ],
             options={
                 'verbose_name_plural': '定时任务',
