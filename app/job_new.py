@@ -16,9 +16,6 @@ def start_scheduler():
     global scheduler
     scheduler = BackgroundScheduler()
     scheduler.start()
-    from .job_tool import monitor_job_status
-    scheduler.add_job(monitor_job_status, 'cron', second=0, minute='*/1', hour='*', day='*', month='*', day_of_week='*',
-                      year='*', id='monitor_job_status-0', replace_existing=True)
 
 
 class JobAction:

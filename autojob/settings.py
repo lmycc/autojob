@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'simpleui',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -97,6 +98,11 @@ CACHES = {
         }
     }
 }
+
+# 定时任务指令广播（Pub/Sub），复用上面的 Redis 连接地址
+JOB_CMD_REDIS_URL = CACHES['default']['LOCATION']
+JOB_CMD_CHANNEL = 'autojob:job_cmd'
+
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -139,13 +145,13 @@ STATIC_ROOT = 'static'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-BASE_LOG_DIR = os.path.join(os.path.dirname(BASE_DIR), "autojob_log")
-autojob_info = 'autojob_info.log'
-autojob_error = 'autojob_error.log'
+BASE_LOG_DIR = os.path.join(os.path.dirname(BASE_DIR), "log")
+autojob_info = 'info.log'
+autojob_error = 'error.log'
 if not os.path.isfile(os.path.join(BASE_LOG_DIR, autojob_info)):
-    f = open(autojob_info, 'w')
+    open(os.path.join(BASE_LOG_DIR, autojob_info), 'w').close()
 if not os.path.isfile(os.path.join(BASE_LOG_DIR, autojob_error)):
-    f = open(autojob_error, 'w')
+    open(os.path.join(BASE_LOG_DIR, autojob_error), 'w').close()
 LOGGING = {
     'version': 1,  # 保留字
     'disable_existing_loggers': False,  # 禁用已经存在的logger实例

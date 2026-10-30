@@ -1,8 +1,8 @@
-from apscheduler.jobstores.base import ConflictingIdError, JobLookupError
+from apscheduler.jobstores.base import ConflictingIdError
 from django.contrib import admin
-from django.core.cache import cache
 from django.utils import timezone
 
+from app.cmd_listener import publish_cmd
 from app.job_new import JobAction
 
 from .models import JobList, JobTrigger
@@ -43,8 +43,9 @@ class JobListAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if obj.job_state == 1:
-            cache.set('modify_' + obj.trigger.trigger_func + '-' + str(obj.id), (obj.action_type, obj.job_rate),
-                      timeout=60)
+            # 广播给所有 worker，立即应用新的调度类型/频率
+            publish_cmd('modify', obj.trigger.trigger_func + '-' + str(obj.id),
+                        (obj.action_type, obj.job_rate))
         obj.save()
 
     def start_job(self, request, queryset):
@@ -55,23 +56,14 @@ class JobListAdmin(admin.ModelAdmin):
         job_num = len(id_list)
         name_list = queryset.values('job_name')
         action_type = queryset.values('action_type')
-        update_time = queryset.values('update_time')
         current_time = timezone.now()
-        for (trigger, rate, id_, name, type_, time_) in zip(trigger_list, rate_list, id_list, name_list, action_type,
-                                                            update_time):
+        for (trigger, rate, id_, name, type_) in zip(trigger_list, rate_list, id_list, name_list, action_type):
             try:
                 job_name = name.get('job_name')
                 job_rate = rate.get('job_rate')
                 job_id = id_.get('id')
                 trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
                 job_type = type_.get('action_type')
-                last_time = time_.get('update_time')
-                interval_time = current_time - last_time
-                seconds = interval_time.days * 24 * 3600 + interval_time.seconds
-                if seconds < 60:
-                    messages.warning(request, '请于 %ss 后在启动 %s' % (str(60 - seconds), job_name))
-                    job_num -= 1
-                    continue
                 if hasattr(JobAction(), 'start_%s_job' % job_type):
                     func = getattr(JobAction(), 'start_%s_job' % job_type)
                     func(trigger_name, job_rate, str(job_id))
@@ -111,13 +103,9 @@ class JobListAdmin(admin.ModelAdmin):
                 job_name = name.get('job_name')
                 job_id = id_.get('id')
                 trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
-                JobAction.stop_job(trigger_name + '-' + str(job_id))
                 queryset.filter(id=job_id).update(job_state=0, update_time=current_time)
-                cache.set('stop_' + str(job_id), trigger_name + '-' + str(job_id), timeout=60)
-            except JobLookupError as e:
-                logger.error(e)
-                job_num -= 1
-                messages.error(request, job_name + " 任务不存在！")
+                # 广播给所有 worker，立即从各自的调度器移除
+                publish_cmd('stop', trigger_name + '-' + str(job_id))
             except Exception as e:
                 logger.error(e)
                 job_num -= 1
