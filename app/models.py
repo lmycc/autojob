@@ -6,7 +6,7 @@ class JobTrigger(models.Model):
     trigger_name = models.CharField('触发器名称', max_length=25)
     trigger_func = models.CharField('触发器', max_length=25)
     func_desc = '例：from app.test_job import test'
-    func_path = models.CharField('触发器路径', help_text=func_desc, max_length=255)
+    func_path = models.CharField('触发器路径', help_text=func_desc, max_length=255, unique=True)
     description = models.CharField('描述', max_length=50)
 
     def __str__(self):
