@@ -110,15 +110,15 @@ def _handle(payload):
     try:
         if op == 'stop':
             JobAction.stop_job(job_id)
-            logger.info('收到停止指令: %s', job_id)
+            logger.info('收到停止指令: %s,pid=%s', job_id, os.getpid())
         elif op == 'modify':
             JobAction.modify_job(job_id, payload.get('value'))
-            logger.info('收到修改指令: %s -> %s', job_id, payload.get('value'))
+            logger.info('收到修改指令: %s -> %s,pid=%s', job_id, payload.get('value'), os.getpid())
         else:
             logger.warning('收到未知指令: %s', payload)
     except JobLookupError:
         # 目标任务在本进程的调度器里根本不存在（还没启动 / 已被其他 worker 停掉）
         # 这种情况不应该让 pubsub 连接炸掉
-        logger.warning('指令 %s 未执行，本进程没有这个任务: %s', op, job_id)
+        logger.warning('指令 %s 未执行，本进程没有这个任务: %s,pid=%s', op, job_id, os.getpid())
     except Exception:
         logger.exception('处理指令失败: %s', payload)

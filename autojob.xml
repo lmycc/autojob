@@ -1,10 +1,27 @@
-<uwsgi>    
-   <socket>127.0.0.1:8997</socket> <!-- 内部端口，自定义 --> 
-   <chdir>/Users/liumy/PycharmProjects/autojob/</chdir> <!-- 项目路径 -->
-   <module>autojob.wsgi</module>  <!-- autojob为wsgi.py所在目录名-->
-   <processes>4</processes> <!-- 进程数 -->
-   <daemonize>uwsgi.log</daemonize> <!-- 日志文件 -->
-   <enable-threads>True</enable-threads>
-   <preload>True</preload>
-   <lazy-apps>True</lazy-apps>
+<uwsgi>
+    <!-- ===== 基础路径（部署前改这 2 处为实际路径）===== -->
+    <chdir>/app/data/autojob/</chdir>                              <!-- 项目根目录，manage.py 所在 -->
+
+    <!-- ===== 入口 ===== -->
+    <module>autojob.wsgi</module>
+
+    <!-- ===== 网络（nginx 反代走内部 TCP，不对外）===== -->
+    <socket>127.0.0.1:8997</socket>
+
+    <!-- ===== 进程模型（3 个关键字段，一个不能少）===== -->
+    <master>True</master>                                    <!-- 必须，uWSGI 架构需要 master -->
+    <processes>4</processes>                                 <!-- worker 数（建议 = CPU 核数） -->
+    <enable-threads>True</enable-threads>                    <!-- 必须，APScheduler + PubSub 监听都是线程 -->
+    <lazy-apps>True</lazy-apps>                              <!-- 必须，每个 worker fork 后各自加载应用 -->
+
+    <!-- ===== 生命周期（防调度器被意外销毁）===== -->
+    <max-requests>0</max-requests>                           <!-- 禁止 worker 达请求数重启 -->
+    <harakiri>0</harakiri>                                   <!-- 禁止 worker 超时自杀 -->
+    <vacuum>True</vacuum>                                    <!-- 退出时清理 socket/pidfile -->
+    <die-on-term>True</die-on-term>                          <!-- 优雅退出 -->
+    <buffer-size>32768</buffer-size>                         <!-- 防 Admin 表单 413 -->
+
+    <!-- ===== 日志 ===== -->
+    <logto>/app/data/autojob/log/uwsgi.log</logto>                <!-- 路径需提前建：mkdir -p /var/log/uwsgi -->
+    <log-date>True</log-date>
 </uwsgi>
