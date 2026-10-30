@@ -29,10 +29,7 @@ class JobList(models.Model):
     job_state = models.IntegerField('任务状态', choices=gender_choices, default=0)
     job_rate = models.CharField('执行频率', help_text=type_content, max_length=50)
     time = models.IntegerField('执行次数', default=0)
-    help_text_update_time = '''任务状态变更才会更新时间<br/>
-                                启动任务 当前时间须比上次变更时间大于一分钟<br/>
-                                停止任务 无需等待'''
-    update_time = models.DateTimeField('更新时间', auto_now_add=timezone.now(), help_text=help_text_update_time)
+    update_time = models.DateTimeField('更新时间', auto_now_add=timezone.now())
 
     def __str__(self):
         return self.job_name

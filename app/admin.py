@@ -42,11 +42,11 @@ class JobListAdmin(admin.ModelAdmin):
         return readonly_fields
 
     def save_model(self, request, obj, form, change):
-        obj.save()
         if obj.job_state == 1:
             # 广播给所有 worker，立即应用新的调度类型/频率
             publish_cmd('modify', obj.trigger.trigger_func + '-' + str(obj.id),
                         (obj.action_type, obj.job_rate))
+        obj.save()
 
     def start_job(self, request, queryset):
         global job_name
@@ -56,23 +56,14 @@ class JobListAdmin(admin.ModelAdmin):
         job_num = len(id_list)
         name_list = queryset.values('job_name')
         action_type = queryset.values('action_type')
-        update_time = queryset.values('update_time')
         current_time = timezone.now()
-        for (trigger, rate, id_, name, type_, time_) in zip(trigger_list, rate_list, id_list, name_list, action_type,
-                                                            update_time):
+        for (trigger, rate, id_, name, type_) in zip(trigger_list, rate_list, id_list, name_list, action_type):
             try:
                 job_name = name.get('job_name')
                 job_rate = rate.get('job_rate')
                 job_id = id_.get('id')
                 trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
                 job_type = type_.get('action_type')
-                last_time = time_.get('update_time')
-                interval_time = current_time - last_time
-                seconds = interval_time.days * 24 * 3600 + interval_time.seconds
-                if seconds < 60:
-                    messages.warning(request, '请于 %ss 后在启动 %s' % (str(60 - seconds), job_name))
-                    job_num -= 1
-                    continue
                 if hasattr(JobAction(), 'start_%s_job' % job_type):
                     func = getattr(JobAction(), 'start_%s_job' % job_type)
                     func(trigger_name, job_rate, str(job_id))
