@@ -35,4 +35,5 @@ class JobList(models.Model):
         return self.job_name
 
     class Meta:
-        verbose_name_plural = '定时任务'
+        verbose_name = '定时任务列表'
+        verbose_name_plural = verbose_name

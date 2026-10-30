@@ -6,12 +6,13 @@
 
 #### AutoJob 是整合了APScheduler和Django的一个定时任务app，只需安装依赖，通过一定配置即可完成定时任务的开发，可通过页面管理定时任务的编辑和状态变更
 #### 该app解决了在 Django + uwsgi 部署应用时，启动多个进程会导致定时任务启动冲突的情况
-#### 暂只支持`corn`和`date`两种类型，本地需安装redis，版本需大于 5（测试用5.0.14.1）
+#### 暂只支持`cron`和`date`两种类型，本地需安装 Redis，版本需大于等于 5（测试用 5.0.14.1）
+#### 停止和修改指令通过 Redis Pub/Sub 广播，所有 uWSGI worker 可实时接收并应用变更，无需轮询 Redis key
 #### 该定时任务还适配了simple-ui前端框架
 
 ## 安装方式
 ```
-pip install autojob
+pip install django-autojob
 ```
 ## 使用方式
 
@@ -36,7 +37,7 @@ python manage.py scan_jobs
 - **代码调用方式**
 ```
 ## 这种方式是在`wsgi.py`文件中增加对command的引用来录入自定义定时任务触发器
-from app.management.commands.scan_jobs import Command
+from autojob.management.commands.scan_jobs import Command
 scan_jobs = Command()
 scan_jobs.handle()
  
@@ -50,8 +51,11 @@ from autojob import job_tool
 job_tool.job_control()
 ```
 
-### 4. 在 `settings.py`添加redis配置
-```
+### 4. 在 `settings.py` 添加 Redis 和 Pub/Sub 配置
+
+`job_control()` 会在每个 worker 中同时启动调度器和指令监听线程。监听线程订阅 Pub/Sub 频道，实时处理 Admin 发出的停止、修改指令。
+
+```python
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -64,7 +68,14 @@ CACHES = {
         }
     }
 }
+
+# 定时任务指令监听器使用的 Redis 连接地址（Pub/Sub）
+JOB_CMD_REDIS_URL = CACHES['default']['LOCATION']
+# 同一应用的所有 worker 共用的 Pub/Sub 频道
+JOB_CMD_CHANNEL = 'autojob:job_cmd'
 ```
+
+`JOB_CMD_REDIS_URL` 默认复用缓存的 Redis 地址，也可配置为其他 Redis 实例。同一应用的所有 worker 必须使用相同的 `JOB_CMD_CHANNEL`；需要隔离的环境应使用不同的频道名。
 
 ### 5. 一个测试任务的demo： `job_test.py`
 
@@ -73,7 +84,7 @@ CACHES = {
 import datetime
 import logging
 
-from app.job_tool import job_before
+from autojob.job_tool import job_before
 
 logger = logging.getLogger(__name__)
 

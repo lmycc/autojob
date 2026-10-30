@@ -1,8 +1,4 @@
 #!/bin/bash
-:>uwsgi.log
-:>./autojob_log/autojob_info.log
-:>./autojob_log/autojob_error.log
-source /Users/liumy/PycharmProjects/autojob/venv/bin/activate
 uwsginum=`ps -ef |grep -w uwsgi|grep -v grep|wc -l`
 nginxnum=`ps -ef |grep -w nginx|grep -v grep|wc -l`
 if [ $uwsginum -le 0 ];then

@@ -9,14 +9,16 @@
 
 #### This app solves the problem of scheduling task startup conflicts caused by starting multiple processes when deploying applications in Django+uwsgi
 
-#### Currently only supports two types: 'corn' and 'date', Redis needs to be installed locally
+#### Currently only supports two types: 'cron' and 'date'. Redis >= 5 is required
+
+#### Stop and modify commands are broadcast through Redis Pub/Sub, allowing every uWSGI worker to apply changes immediately without polling Redis keys
 
 #### This scheduled task is also compatible with the Simple UI front-end framework
 
 ## Installation
 
 ```
-pip install autojob
+pip install django-autojob
 ```
 
 ## Usage
@@ -48,7 +50,7 @@ python manage.py scan_jobs
 
 ```
 ## This method involves adding a reference to the command in the 'wsgi.py' file to input custom timed task triggers
-from app.management.commands.scan_jobs import Command
+from autojob.management.commands.scan_jobs import Command
 
 scan_jobs = Command()
 scan_jobs.handle()
@@ -64,9 +66,11 @@ from autojob import job_tool
 job_tool.job_control()
 ```
 
-### 4. Add cache config to settings.py
+### 4. Add Redis and Pub/Sub config to `settings.py`
 
-```
+`job_control()` starts both the scheduler and a command listener in each worker. The listener subscribes to the Pub/Sub channel and applies Admin stop/modify commands in real time.
+
+```python
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -79,7 +83,14 @@ CACHES = {
         }
     }
 }
+
+# Redis connection used by the job command listener (Pub/Sub)
+JOB_CMD_REDIS_URL = CACHES['default']['LOCATION']
+# Pub/Sub channel shared by all workers of the same application
+JOB_CMD_CHANNEL = 'autojob:job_cmd'
 ```
+
+`JOB_CMD_REDIS_URL` can reuse the cache Redis URL or point to another Redis instance. `JOB_CMD_CHANNEL` must be identical across all workers of the same application; use different channel names for isolated environments.
 
 ### 5. job demo `job_test.py`
 
@@ -88,7 +99,7 @@ CACHES = {
 import datetime
 import logging
 
-from app.job_tool import job_before
+from autojob.job_tool import job_before
 
 logger = logging.getLogger(__name__)
 
