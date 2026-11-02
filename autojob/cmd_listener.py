@@ -100,7 +100,7 @@ def _listen_forever():
 
 
 def _handle(payload):
-    from app.job_new import JobAction
+    from autojob.job_new import JobAction
     from apscheduler.jobstores.base import JobLookupError
 
     op = payload.get('op')

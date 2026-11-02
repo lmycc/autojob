@@ -2,7 +2,7 @@
 import datetime
 import logging
 
-from app.job_tool import job_before
+from autojob.job_tool import job_before
 
 logger = logging.getLogger(__name__)
 
