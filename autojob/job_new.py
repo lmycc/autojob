@@ -6,7 +6,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED
 
-from app.models import JobList
+from autojob.models import JobList
 
 logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)

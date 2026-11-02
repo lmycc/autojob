@@ -2,8 +2,8 @@ from apscheduler.jobstores.base import ConflictingIdError
 from django.contrib import admin
 from django.utils import timezone
 
-from app.cmd_listener import publish_cmd
-from app.job_new import JobAction
+from autojob.cmd_listener import publish_cmd
+from autojob.job_new import JobAction
 
 from .models import JobList, JobTrigger
 import logging

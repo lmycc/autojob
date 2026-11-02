@@ -107,7 +107,7 @@ class Command(BaseCommand):
                 discovered.append((module, name, obj))
 
         # ---- 阶段 3：写入 DB ----
-        from app.models import JobTrigger
+        from autojob.models import JobTrigger
 
         existing_map = {
             t.func_path: t  # func_path 是唯一语义键

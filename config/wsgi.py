@@ -1,5 +1,5 @@
 """
-WSGI config for autojob project.
+WSGI config for config project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,12 +11,12 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'autojob.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 application = get_wsgi_application()
 try:
-    from app import job_tool
-    from app.management.commands.scan_jobs import Command
+    from autojob import job_tool
+    from autojob.management.commands.scan_jobs import Command
 
     job_tool.job_control()
 

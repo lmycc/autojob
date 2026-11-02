@@ -4,7 +4,7 @@ from functools import wraps
 from django.core.cache import cache
 from django.utils import timezone
 
-from app.models import JobList
+from autojob.models import JobList
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def job_before(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        from app.job_new import JobAction
+        from autojob.job_new import JobAction
         if args[2] == 'now':
             return func(*args, **kwargs)
         job = JobList.objects.filter(id=int(args[1])).values('job_state', 'action_type')[0]
@@ -41,9 +41,9 @@ def get_lock(lock_name):
 def job_control():
     global logger
     try:
-        from app.job_new import JobAction
-        from app import job_new
-        from app.models import JobList
+        from autojob.job_new import JobAction
+        from autojob import job_new
+        from autojob.models import JobList
         import logging
 
         logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def job_control():
         logger.info('程序启动，恢复未完成的定时任务 : ' + str(job_list_.__len__()))
         job_new.start_scheduler()
         # 每个 worker 进程内各起一个指令监听线程，实时接收 Admin 的停止/修改指令
-        from app.cmd_listener import start_listener
+        from autojob.cmd_listener import start_listener
         start_listener()
         for job_ in job_list_:
             if hasattr(JobAction, 'start_%s_job' % job_.action_type):

@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('trigger_name', models.CharField(max_length=25, verbose_name='触发器名称')),
                 ('trigger_func', models.CharField(max_length=25, verbose_name='触发器')),
-                ('func_path', models.CharField(help_text='例：from app.test_job import test', max_length=255, unique=True, verbose_name='触发器路径')),
+                ('func_path', models.CharField(help_text='例：from autojob.test_job import test', max_length=255, unique=True, verbose_name='触发器路径')),
                 ('description', models.CharField(max_length=50, verbose_name='描述')),
             ],
             options={
@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('job_rate', models.CharField(help_text='调度类型 对应 参数（执行频率）  例：<br/>\n                        1、date：2019年8月30日 凌晨一点 执行任务<br/>参数值：2019-8-30 01:00:00 <br/>\n                        2、cron：每天 凌晨两点 执行任务 (秒 分 时 日 月 星期 年)<br/>参数值：0 0 2 * * * *', max_length=50, verbose_name='执行频率')),
                 ('time', models.IntegerField(default=0, verbose_name='执行次数')),
                 ('update_time', models.DateTimeField(auto_now_add=True, verbose_name='更新时间')),
-                ('trigger', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='app.jobtrigger')),
+                ('trigger', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='autojob.jobtrigger')),
             ],
             options={
                 'verbose_name_plural': '定时任务',
