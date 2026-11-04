@@ -157,7 +157,7 @@ LOGGING = {
     'disable_existing_loggers': False,  # 禁用已经存在的logger实例
     'formatters': {
         'standard': {
-            'format': '[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d]'
+            'format': '[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s:%(lineno)d]'
                       '[%(levelname)s][%(message)s]'
         },
         # 简单的日志格式

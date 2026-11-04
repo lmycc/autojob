@@ -1,3 +1,5 @@
+import os
+
 from apscheduler.jobstores.base import ConflictingIdError
 from django.contrib import admin
 from django.utils import timezone
@@ -65,9 +67,11 @@ class JobListAdmin(admin.ModelAdmin):
                 trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
                 job_type = type_.get('action_type')
                 if hasattr(JobAction, 'start_%s_job' % job_type):
+                    logger.info('发布 %s 指令 %s', 'start', {'op': 'start', 'job_id': job_id})
                     func = getattr(JobAction, 'start_%s_job' % job_type)
                     func(trigger_name, job_rate, str(job_id))
                     queryset.filter(id=job_id).update(job_state=1, update_time=current_time)
+                    logger.info('%s 指令执行完成: %s, worker_pid=%s', 'start', job_id, os.getpid())
                 else:
                     messages.error(request, '【启动错误】 ' + job_name + ' 任务不存在!')
                     job_num -= 1

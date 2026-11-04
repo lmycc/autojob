@@ -45,7 +45,7 @@ def job_control():
 
         job_list_ = JobList.objects.filter(job_state=1)
         # 多 worker 同轮启动只记录一次，短期 TTL 允许后续重启再次记录。
-        if cache.add('autojob:startup-log', 1, timeout=60):
+        if cache.add('autojob:startup-log', 1, timeout=20):
             logger.info('程序启动，恢复未完成的定时任务 : %s', len(job_list_))
         job_new.start_scheduler()
         # 每个 worker 进程内各起一个指令监听线程，实时接收 Admin 的停止/修改指令

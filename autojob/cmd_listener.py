@@ -39,7 +39,7 @@ def _claim_cmd_log(cmd_id):
     if not cmd_id:
         return True
     key = '%s:executed:%s' % (settings.JOB_CMD_CHANNEL, cmd_id)
-    return bool(_get_client().set(key, os.getpid(), nx=True, ex=60))
+    return bool(_get_client().set(key, os.getpid(), nx=True, ex=10))
 
 
 def publish_cmd(op, job_id, value=None):
@@ -53,7 +53,7 @@ def publish_cmd(op, job_id, value=None):
     if value is not None:
         payload['value'] = value
     # 必须先写发布日志再广播，否则其他 worker 可能先记录接收日志。
-    logger.info('发布指令 %s', payload)
+    logger.info('发布 %s 指令 %s', op, payload)
     try:
         receivers = _get_client().publish(settings.JOB_CMD_CHANNEL, json.dumps(payload))
     except redis.RedisError:
@@ -122,12 +122,12 @@ def _handle(payload):
         # 所有 worker 都会收到广播，同一指令只由第一个执行成功者记录日志。
         if op == 'stop':
             if JobAction.stop_job(job_id) and _claim_cmd_log(payload.get('cmd_id')):
-                logger.info('停止指令执行完成: %s, worker_pid=%s', job_id, os.getpid())
+                logger.info('%s 指令执行完成: %s, worker_pid=%s', op, job_id, os.getpid())
         elif op == 'modify':
             if JobAction.modify_job(job_id, payload.get('value')) and _claim_cmd_log(payload.get('cmd_id')):
                 logger.info(
-                    '修改指令执行完成: %s -> %s, worker_pid=%s',
-                    job_id, payload.get('value'), os.getpid()
+                    '%s 指令执行完成: %s -> %s, worker_pid=%s',
+                    op, job_id, payload.get('value'), os.getpid()
                 )
         else:
             logger.warning('收到未知指令: %s', payload)
