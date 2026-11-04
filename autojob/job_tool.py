@@ -39,24 +39,21 @@ def get_lock(lock_name):
 
 
 def job_control():
-    global logger
     try:
         from autojob.job_new import JobAction
         from autojob import job_new
-        from autojob.models import JobList
-        import logging
-
-        logger = logging.getLogger(__name__)
 
         job_list_ = JobList.objects.filter(job_state=1)
-        logger.info('程序启动，恢复未完成的定时任务 : ' + str(job_list_.__len__()))
+        # 多 worker 同轮启动只记录一次，短期 TTL 允许后续重启再次记录。
+        if cache.add('autojob:startup-log', 1, timeout=60):
+            logger.info('程序启动，恢复未完成的定时任务 : %s', len(job_list_))
         job_new.start_scheduler()
         # 每个 worker 进程内各起一个指令监听线程，实时接收 Admin 的停止/修改指令
         from autojob.cmd_listener import start_listener
         start_listener()
         for job_ in job_list_:
             if hasattr(JobAction, 'start_%s_job' % job_.action_type):
-                func = getattr(JobAction(), 'start_%s_job' % job_.action_type)
+                func = getattr(JobAction, 'start_%s_job' % job_.action_type)
                 func(job_.trigger.trigger_func, job_.job_rate, str(job_.id))
             else:
                 logger.error('【启动错误】 ' + job_.trigger.trigger_func + '任务不存在!')
