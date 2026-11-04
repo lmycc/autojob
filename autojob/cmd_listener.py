@@ -14,6 +14,7 @@ import logging
 import os
 import threading
 import time
+import uuid
 
 import redis
 from django.conf import settings
@@ -33,6 +34,14 @@ def _get_client():
     return _client
 
 
+def _claim_cmd_log(cmd_id):
+    """同一指令只允许一个实际执行成功的 worker 记录日志。"""
+    if not cmd_id:
+        return True
+    key = '%s:executed:%s' % (settings.JOB_CMD_CHANNEL, cmd_id)
+    return bool(_get_client().set(key, os.getpid(), nx=True, ex=60))
+
+
 def publish_cmd(op, job_id, value=None):
     """发布一条任务指令，所有 worker 都会收到。
 
@@ -40,9 +49,11 @@ def publish_cmd(op, job_id, value=None):
     job_id: 调度器里的任务 id，格式为 ``{trigger_func}-{JobList.id}``
     value: modify 时为新值 (action_type, job_rate)
     """
-    payload = {'op': op, 'job_id': job_id}
+    payload = {'op': op, 'job_id': job_id, 'cmd_id': uuid.uuid4().hex}
     if value is not None:
         payload['value'] = value
+    # 必须先写发布日志再广播，否则其他 worker 可能先记录接收日志。
+    logger.info('发布指令 %s', payload)
     try:
         receivers = _get_client().publish(settings.JOB_CMD_CHANNEL, json.dumps(payload))
     except redis.RedisError:
@@ -50,7 +61,7 @@ def publish_cmd(op, job_id, value=None):
         # 停止指令会在任务下次触发时由 job_before 里的 job_state 检查兜底
         logger.exception('指令发布失败，已降级为数据库状态兜底: %s', payload)
         return 0
-    logger.info('已发布指令 %s，在线订阅者 %s 个', payload, receivers)
+    logger.debug('指令发布完成，在线订阅者 %s 个', receivers)
     return receivers
 
 
@@ -66,7 +77,7 @@ def start_listener():
         target=_listen_forever, name='autojob-cmd-%s' % pid, daemon=True
     )
     thread.start()
-    logger.info('任务指令监听线程已启动, pid=%s', pid)
+    logger.debug('任务指令监听线程已启动, pid=%s', pid)
     return True
 
 
@@ -81,7 +92,7 @@ def _listen_forever():
                 )
                 pubsub = client.pubsub(ignore_subscribe_messages=True)
                 pubsub.subscribe(settings.JOB_CMD_CHANNEL)
-                logger.info(
+                logger.debug(
                     '已订阅 %s, pid=%s', settings.JOB_CMD_CHANNEL, os.getpid()
                 )
             message = pubsub.get_message(timeout=5)
@@ -108,17 +119,20 @@ def _handle(payload):
     if not job_id:
         return
     try:
+        # 所有 worker 都会收到广播，同一指令只由第一个执行成功者记录日志。
         if op == 'stop':
-            JobAction.stop_job(job_id)
-            logger.info('收到停止指令: %s, pid=%s', job_id, os.getpid())
+            if JobAction.stop_job(job_id) and _claim_cmd_log(payload.get('cmd_id')):
+                logger.info('停止指令执行完成: %s, worker_pid=%s', job_id, os.getpid())
         elif op == 'modify':
-            JobAction.modify_job(job_id, payload.get('value'))
-            logger.info('收到修改指令: %s -> %s, pid=%s', job_id, payload.get('value'), os.getpid())
+            if JobAction.modify_job(job_id, payload.get('value')) and _claim_cmd_log(payload.get('cmd_id')):
+                logger.info(
+                    '修改指令执行完成: %s -> %s, worker_pid=%s',
+                    job_id, payload.get('value'), os.getpid()
+                )
         else:
             logger.warning('收到未知指令: %s', payload)
     except JobLookupError:
-        # 目标任务在本进程的调度器里根本不存在（还没启动 / 已被其他 worker 停掉）
-        # 这种情况不应该让 pubsub 连接炸掉
-        logger.warning('指令 %s 未执行，本进程没有这个任务: %s, pid=%s', op, job_id, os.getpid())
+        # 广播期间任务被移除属于正常情况，其他 worker 不再重复记录警告。
+        logger.debug('本进程没有任务，忽略指令: %s, pid=%s', payload, os.getpid())
     except Exception:
         logger.exception('处理指令失败: %s', payload)

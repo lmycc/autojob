@@ -64,8 +64,8 @@ class JobListAdmin(admin.ModelAdmin):
                 job_id = id_.get('id')
                 trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
                 job_type = type_.get('action_type')
-                if hasattr(JobAction(), 'start_%s_job' % job_type):
-                    func = getattr(JobAction(), 'start_%s_job' % job_type)
+                if hasattr(JobAction, 'start_%s_job' % job_type):
+                    func = getattr(JobAction, 'start_%s_job' % job_type)
                     func(trigger_name, job_rate, str(job_id))
                     queryset.filter(id=job_id).update(job_state=1, update_time=current_time)
                 else:
@@ -79,7 +79,6 @@ class JobListAdmin(admin.ModelAdmin):
                 logger.error(e)
                 messages.error(request, job_name + ' 任务启动异常！<br/>请检查调度类型或执行频率')
                 job_num -= 1
-        JobAction().get_jobs()
         if job_num > 0 and len(id_list) > 1:
             messages.success(request,
                              ('其余' if job_num != len(id_list) else '所选') + ' %s 个任务启动成功' % str(job_num))
@@ -110,7 +109,6 @@ class JobListAdmin(admin.ModelAdmin):
                 logger.error(e)
                 job_num -= 1
                 messages.error(request, job_name + ' 任务停止异常！')
-        JobAction().get_jobs()
         if job_num > 0 and len(id_list) > 1:
             messages.success(request,
                              ('其余' if job_num != len(id_list) else '所选') + ' %s 个任务已停止' % str(job_num))
@@ -133,8 +131,8 @@ class JobListAdmin(admin.ModelAdmin):
             job_name = name.get('job_name')
             job_id = id_.get('id')
             trigger_name = JobList.objects.get(id=job_id).trigger.trigger_func
-            if hasattr(JobAction(), 'run_job'):
-                func = getattr(JobAction(), 'run_job')
+            if hasattr(JobAction, 'run_job'):
+                func = getattr(JobAction, 'run_job')
                 func(trigger_name, str(job_id))
             else:
                 messages.error(request, '【启动错误】 ' + job_name + ' 任务不存在!')
