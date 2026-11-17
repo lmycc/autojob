@@ -20,10 +20,11 @@ class JobTrigger(models.Model):
 class JobList(models.Model):
     job_name = models.CharField('任务名称', max_length=25)
     trigger = models.ForeignKey(JobTrigger, on_delete=models.SET_NULL, null=True)
-    type_choices = (('date', 'date'), ('cron', 'cron'))
+    type_choices = (('date', 'date'), ('cron', 'cron'), ('interval', 'interval'))
     type_content = '''调度类型 对应 参数（执行频率）  例：<br/>
                         1、date：2019年8月30日 凌晨一点 执行任务<br/>参数值：2019-8-30 01:00:00 <br/>
-                        2、cron：每天 凌晨两点 执行任务 (秒 分 时 日 月 星期 年)<br/>参数值：0 0 2 * * * *'''
+                        2、cron：每天 凌晨两点 执行任务 (秒 分 时 日 月 星期 年)<br/>参数值：0 0 2 * * * *<br/>
+                        3、interval：每隔 5 分钟 执行任务 (秒 分 时，缺省为 0，至少一项大于 0)<br/>参数值：0 5'''
     action_type = models.CharField('调度类型', choices=type_choices, max_length=25, default='cron')
     gender_choices = ((0, '停止'), (1, '启动'),)
     job_state = models.IntegerField('任务状态', choices=gender_choices, default=0)

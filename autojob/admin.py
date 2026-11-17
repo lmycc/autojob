@@ -1,17 +1,37 @@
 import os
 
 from apscheduler.jobstores.base import ConflictingIdError
+from django import forms
 from django.contrib import admin
 from django.utils import timezone
 
 from autojob.cmd_listener import publish_cmd
-from autojob.job_new import JobAction
+from autojob.job_new import JobAction, parse_job_rate
 
 from .models import JobList, JobTrigger
 import logging
 from django.contrib import messages
 
 logger = logging.getLogger(__name__)
+
+
+class JobListForm(forms.ModelForm):
+    """保存任务时校验执行频率，规则复用 job_new。"""
+
+    class Meta:
+        model = JobList
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        action_type = cleaned_data.get('action_type')
+        job_rate = cleaned_data.get('job_rate')
+        if action_type and job_rate:
+            try:
+                parse_job_rate(action_type, job_rate)
+            except ValueError as exc:
+                self.add_error('job_rate', str(exc))
+        return cleaned_data
 
 
 # Register your models here.
@@ -27,6 +47,7 @@ class JobTriggerAdmin(admin.ModelAdmin):
 # Register your models here.
 @admin.register(JobList)
 class JobListAdmin(admin.ModelAdmin):
+    form = JobListForm
     list_display = ('id', 'job_name', 'job_state', 'action_type', 'job_rate', 'update_time')
     list_display_links = ('id', 'job_name')
     list_filter = ('job_state',)
@@ -42,6 +63,11 @@ class JobListAdmin(admin.ModelAdmin):
         else:
             readonly_fields = ('job_state',)
         return readonly_fields
+
+    def get_changelist_form(self, request, **kwargs):
+        # 列表页的 action_type / job_rate 内联编辑同样要走执行频率校验
+        kwargs.setdefault('form', JobListForm)
+        return super().get_changelist_form(request, **kwargs)
 
     def save_model(self, request, obj, form, change):
         if obj.job_state == 1:
