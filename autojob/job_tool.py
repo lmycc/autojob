@@ -43,11 +43,14 @@ def job_control():
         from autojob.job_new import JobAction
         from autojob import job_new
 
+        # 同一进程内重复调用时，调度器已启动且任务已恢复，直接跳过
+        if not job_new.start_scheduler():
+            return
+
         job_list_ = JobList.objects.filter(job_state=1)
         # 多 worker 同轮启动只记录一次，短期 TTL 允许后续重启再次记录。
         if cache.add('autojob:startup-log', 1, timeout=20):
             logger.info('程序启动，恢复未完成的定时任务 : %s', len(job_list_))
-        job_new.start_scheduler()
         # 每个 worker 进程内各起一个指令监听线程，实时接收 Admin 的停止/修改指令
         from autojob.cmd_listener import start_listener
         start_listener()
@@ -58,4 +61,4 @@ def job_control():
             else:
                 logger.error('【启动错误】 ' + job_.trigger.trigger_func + '任务不存在!')
     except Exception as rel:
-        logger.error("scheduler start error:" + str(rel))
+        logger.exception('scheduler start error: %s', rel)

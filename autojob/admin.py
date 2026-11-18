@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.utils import timezone
 
 from autojob.cmd_listener import publish_cmd
-from autojob.job_new import JobAction, parse_job_rate
+from autojob.job_new import JobAction, load_job_func, parse_job_rate
 
 from .models import JobList, JobTrigger
 import logging
@@ -34,9 +34,26 @@ class JobListForm(forms.ModelForm):
         return cleaned_data
 
 
+class JobTriggerForm(forms.ModelForm):
+    """保存触发器时校验触发器路径可解析、可导入。"""
+
+    class Meta:
+        model = JobTrigger
+        fields = '__all__'
+
+    def clean_func_path(self):
+        func_path = self.cleaned_data.get('func_path', '').strip()
+        try:
+            load_job_func(func_path)
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc))
+        return func_path
+
+
 # Register your models here.
 @admin.register(JobTrigger)
 class JobTriggerAdmin(admin.ModelAdmin):
+    form = JobTriggerForm
     list_display = ('id', 'trigger_name', 'trigger_func', 'func_path', 'description')
     list_display_links = ('id', 'trigger_name')
     list_per_page = 20
@@ -70,11 +87,11 @@ class JobListAdmin(admin.ModelAdmin):
         return super().get_changelist_form(request, **kwargs)
 
     def save_model(self, request, obj, form, change):
-        if obj.job_state == 1:
-            # 广播给所有 worker，立即应用新的调度类型/频率
+        super().save_model(request, obj, form, change)
+        if obj.job_state == 1 and obj.trigger_id:
+            # 保存成功后再广播给所有 worker，避免保存失败时已发出指令
             publish_cmd('modify', obj.trigger.trigger_func + '-' + str(obj.id),
                         (obj.action_type, obj.job_rate))
-        obj.save()
 
     def start_job(self, request, queryset):
         global job_name
@@ -102,11 +119,11 @@ class JobListAdmin(admin.ModelAdmin):
                     messages.error(request, '【启动错误】 ' + job_name + ' 任务不存在!')
                     job_num -= 1
             except ConflictingIdError as e:
-                logger.error(e)
+                logger.exception('任务启动冲突: %s', e)
                 messages.error(request, job_name + ' 任务启动发生冲突！')
                 job_num -= 1
             except Exception as e:
-                logger.error(e)
+                logger.exception('任务启动异常: %s', e)
                 messages.error(request, job_name + ' 任务启动异常！<br/>请检查调度类型或执行频率')
                 job_num -= 1
         if job_num > 0 and len(id_list) > 1:
@@ -136,7 +153,7 @@ class JobListAdmin(admin.ModelAdmin):
                 # 广播给所有 worker，立即从各自的调度器移除
                 publish_cmd('stop', trigger_name + '-' + str(job_id))
             except Exception as e:
-                logger.error(e)
+                logger.exception('任务停止异常: %s', e)
                 job_num -= 1
                 messages.error(request, job_name + ' 任务停止异常！')
         if job_num > 0 and len(id_list) > 1:
@@ -168,10 +185,10 @@ class JobListAdmin(admin.ModelAdmin):
                 messages.error(request, '【启动错误】 ' + job_name + ' 任务不存在!')
             messages.success(request, '%s 任务启动成功' % job_name)
         except ConflictingIdError as e:
-            logger.error(e)
+            logger.exception('任务启动冲突: %s', e)
             messages.error(request, job_name + ' 任务启动发生冲突！')
         except Exception as e:
-            logger.error(e)
+            logger.exception('任务启动异常: %s', e)
             messages.error(request, job_name + ' 任务启动异常！<br/>请检查调度类型或执行频率')
         return messages
 
