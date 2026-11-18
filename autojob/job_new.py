@@ -1,11 +1,11 @@
 # coding=utf-8
 import logging
-import os
 import re
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED
+from django.utils.module_loading import import_string
 
 from autojob.models import JobList
 
@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 def start_scheduler():
+    """启动调度器；同一进程内只启动一次，重复调用返回 False。"""
     global scheduler
+    if 'scheduler' in globals() and scheduler.running:
+        return False
     scheduler = BackgroundScheduler(
         job_defaults={
             'misfire_grace_time': 60,
@@ -27,6 +30,7 @@ def start_scheduler():
     )
     scheduler.add_listener(JobAction.my_listener, EVENT_JOB_ERROR | EVENT_JOB_MISSED | EVENT_JOB_EXECUTED)
     scheduler.start()
+    return True
 
 
 def _parse_interval(rate):
@@ -124,34 +128,48 @@ def parse_job_rate(action_type, rate):
         parser(rate)
 
 
+def load_job_func(func_path):
+    """把「from 模块 import 函数」解析成可调用对象，非法时抛出 ValueError。"""
+    parts = func_path.split()
+    if len(parts) != 4 or parts[0] != 'from' or parts[2] != 'import':
+        raise ValueError('触发器路径格式应为「from 模块 import 函数」，例：from autojob.test_job import test')
+    try:
+        func = import_string('%s.%s' % (parts[1], parts[3]))
+    except ImportError as exc:
+        raise ValueError('触发器路径无法导入：%s（%s）' % (func_path, exc)) from None
+    if not callable(func):
+        raise ValueError('触发器路径指向的对象不可调用：%s' % func_path)
+    return func
+
+
 class JobAction:
     @staticmethod
     def start_date_job(trigger, job_rate, id):
-        exec(JobList.objects.get(id=id).trigger.func_path)
+        func = load_job_func(JobList.objects.get(id=id).trigger.func_path)
         trigger_id = trigger + '-' + id
-        scheduler.add_job(eval(trigger), 'date', run_date=_parse_date(job_rate), id=trigger_id,
+        scheduler.add_job(func, 'date', run_date=_parse_date(job_rate), id=trigger_id,
                           args=[trigger_id, id, 'date'], replace_existing=True)
 
     @staticmethod
     def start_cron_job(trigger, job_rate, id):
-        exec(JobList.objects.get(id=id).trigger.func_path)
+        func = load_job_func(JobList.objects.get(id=id).trigger.func_path)
         trigger_id = trigger + '-' + id
         # 秒 分 时 日 月 星期 年
-        scheduler.add_job(eval(trigger), 'cron', id=trigger_id, args=[trigger_id, id, 'cron'],
+        scheduler.add_job(func, 'cron', id=trigger_id, args=[trigger_id, id, 'cron'],
                           replace_existing=True, **_parse_cron(job_rate))
 
     @staticmethod
     def start_interval_job(trigger, job_rate, id):
-        exec(JobList.objects.get(id=id).trigger.func_path)
+        func = load_job_func(JobList.objects.get(id=id).trigger.func_path)
         trigger_id = trigger + '-' + id
-        scheduler.add_job(eval(trigger), 'interval', id=trigger_id, args=[trigger_id, id, 'interval'],
+        scheduler.add_job(func, 'interval', id=trigger_id, args=[trigger_id, id, 'interval'],
                           replace_existing=True, **_parse_interval(job_rate))
 
     @staticmethod
     def run_job(trigger, id):
-        exec(JobList.objects.get(id=id).trigger.func_path)
+        func = load_job_func(JobList.objects.get(id=id).trigger.func_path)
         trigger_id = trigger + '-' + id
-        scheduler.add_job(eval(trigger), 'date', run_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        scheduler.add_job(func, 'date', run_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                           id=trigger_id, args=[trigger_id, id, 'now'])
 
     # 停止任务
@@ -161,17 +179,6 @@ class JobAction:
             return False
         scheduler.remove_job(trigger_id)
         return True
-
-    # 暂停任务
-    @staticmethod
-    def pause_job(trigger_id):
-        logger.info(trigger_id)
-        scheduler.pause_job(trigger_id)
-
-    # 重启任务
-    @staticmethod
-    def resume_job(trigger_id):
-        scheduler.resume_job(trigger_id)
 
     # 修改任务
     @staticmethod
@@ -188,11 +195,6 @@ class JobAction:
             scheduler.reschedule_job(trigger_id, trigger='interval', **_parse_interval(job_value[1]))
             return True
         return False
-
-    @staticmethod
-    def get_jobs():
-        jobs = [item.id for item in scheduler.get_jobs()]
-        logger.info(str(os.getpid()) + ' - all jobs：' + str(jobs))
 
     @staticmethod
     def my_listener(event):

@@ -6,7 +6,7 @@
 
 #### AutoJob 是整合了APScheduler和Django的一个定时任务app，只需安装依赖，通过一定配置即可完成定时任务的开发，可通过页面管理定时任务的编辑和状态变更
 #### 该app解决了在 Django + uwsgi 部署应用时，启动多个进程会导致定时任务启动冲突的情况
-#### 暂只支持`cron`和`date`两种类型，本地需安装 Redis，版本需大于等于 5（测试用 5.0.14.1）
+#### 暂支持`cron`、`date`、`interval`三种类型，本地需安装 Redis，版本需大于等于 5（测试用 5.0.14.1）
 #### 停止和修改指令通过 Redis Pub/Sub 广播，所有 uWSGI worker 可实时接收并应用变更，无需轮询 Redis key
 #### 该定时任务还适配了simple-ui前端框架
 
@@ -25,6 +25,8 @@ INSTALLED_APPS = [
 ```
 
 ### 2. 执行 `python manage.py migrate autojob` 迁移数据表，下面是添加触发器的方式
+
+迁移会同时创建一个内置测试任务（`内置测试定时任务`），每分钟执行一次，安装后即可验证调度是否正常。
 #### 两种录入自定义定时任务的方式
 - **终端命令方式**
 ```
@@ -59,12 +61,12 @@ job_tool.job_control()
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/0",
+        # 带密码的写法：redis://:你的密码@127.0.0.1:6379/0
+        "LOCATION": "redis://:你的密码@127.0.0.1:6379/0",
         "OPTIONS": {
             "PICK_VERSION": -1,
             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "PASSWORD": ""
         }
     }
 }
@@ -75,9 +77,21 @@ JOB_CMD_REDIS_URL = CACHES['default']['LOCATION']
 JOB_CMD_CHANNEL = 'autojob:job_cmd'
 ```
 
+Redis 无密码时写 `redis://127.0.0.1:6379/0`。密码包含 `@`、`:`、`/`、`#`、`%` 等字符时需要 URL 编码（`@` 写成 `%40`）。不要在 `OPTIONS` 里保留空的 `"PASSWORD": ""`，否则会覆盖 `LOCATION` 中的认证信息。
+
 `JOB_CMD_REDIS_URL` 默认复用缓存的 Redis 地址，也可配置为其他 Redis 实例。同一应用的所有 worker 必须使用相同的 `JOB_CMD_CHANNEL`；需要隔离的环境应使用不同的频道名。
 
-### 5. 一个测试任务的demo： `job_test.py`
+### 5. 支持的调度类型
+
+| 类型 | 含义 | `job_rate` 示例 |
+| --- | --- | --- |
+| `date` | 在指定时间执行一次 | `2019-8-30 01:00:00` |
+| `cron` | 7 个字段：秒 分 时 日 月 星期 年 | `0 0 2 * * * *` |
+| `interval` | 固定间隔：秒 分 时（缺省为 0，至少一项大于 0） | `30` / `0 5` / `1 2 3` |
+
+`interval` 示例：`30` 表示每 30 秒，`0 5` 表示每 5 分钟，`1 2 3` 表示每 3 小时 2 分 1 秒。非法值在 Admin 保存时就会被拦截，不会进入调度器。
+
+### 6. 一个测试任务的demo： `job_test.py`
 
 ```
 # coding=utf-8

@@ -9,7 +9,7 @@
 
 #### This app solves the problem of scheduling task startup conflicts caused by starting multiple processes when deploying applications in Django+uwsgi
 
-#### Currently only supports two types: 'cron' and 'date'. Redis >= 5 is required
+#### Currently supports three types: 'cron', 'date' and 'interval'. Redis >= 5 is required
 
 #### Stop and modify commands are broadcast through Redis Pub/Sub, allowing every uWSGI worker to apply changes immediately without polling Redis keys
 
@@ -33,6 +33,8 @@ INSTALLED_APPS = [
 ```
 
 ### 2. Run `python manage.py migrate autojob` to create the autojob models
+
+The migration also creates a built-in test task (`内置测试定时任务`) that runs every minute, so you can verify the scheduler right after installation.
 
 #### Two ways to enter custom scheduled jobs
 
@@ -74,12 +76,12 @@ job_tool.job_control()
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/0",
+        # Password form: redis://:your-password@127.0.0.1:6379/0
+        "LOCATION": "redis://:your-password@127.0.0.1:6379/0",
         "OPTIONS": {
             "PICK_VERSION": -1,
             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "PASSWORD": ""
         }
     }
 }
@@ -90,9 +92,21 @@ JOB_CMD_REDIS_URL = CACHES['default']['LOCATION']
 JOB_CMD_CHANNEL = 'autojob:job_cmd'
 ```
 
+If Redis has no password, use `redis://127.0.0.1:6379/0`. When the password contains characters such as `@`, `:`, `/`, `#` or `%`, URL-encode it (`@` becomes `%40`). Do not set `"PASSWORD"` to an empty string, otherwise it overrides the credential in `LOCATION`.
+
 `JOB_CMD_REDIS_URL` can reuse the cache Redis URL or point to another Redis instance. `JOB_CMD_CHANNEL` must be identical across all workers of the same application; use different channel names for isolated environments.
 
-### 5. job demo `job_test.py`
+### 5. Supported schedule types
+
+| Type | Meaning | Example `job_rate` |
+| --- | --- | --- |
+| `date` | Run once at the given time | `2019-8-30 01:00:00` |
+| `cron` | 7 fields: second minute hour day month day_of_week year | `0 0 2 * * * *` |
+| `interval` | Fixed interval: second minute hour (missing fields are 0, at least one greater than 0) | `30` / `0 5` / `1 2 3` |
+
+`interval` examples: `30` means every 30 seconds, `0 5` every 5 minutes, `1 2 3` every 3 hours 2 minutes 1 second. Invalid values are rejected when saving in the Admin page, so they never reach the scheduler.
+
+### 6. job demo `job_test.py`
 
 ```
 # coding=utf-8

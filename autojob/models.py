@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils import timezone
 
 
 class JobTrigger(models.Model):
@@ -30,7 +29,7 @@ class JobList(models.Model):
     job_state = models.IntegerField('任务状态', choices=gender_choices, default=0)
     job_rate = models.CharField('执行频率', help_text=type_content, max_length=50)
     time = models.IntegerField('执行次数', default=0)
-    update_time = models.DateTimeField('更新时间', auto_now_add=timezone.now())
+    update_time = models.DateTimeField('更新时间', auto_now=True)
 
     def __str__(self):
         return self.job_name
